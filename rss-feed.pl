@@ -16,10 +16,11 @@ use LWP;
 #$|++;
 
 sub usage {
-  die("usage: rss-bolt.pl -t token [-f feed_url] [-s state_file]
+  die("usage: rss-bolt.pl -t token [-f feed_url] [-s state_file] [-a account_id]
   -t|--token token - specify the authentication token you want to use
   -f|--feed feed_url - URL to RSS feed you want to bolt from (defaults to Google News)
   -s|--state state_file - path to a file where we keep RSS state (defaults to the domain)
+  -a|--account account_id - bolt into a specific account, not the default for the token
 
   More information on the BO.LT API: https://dev.bo.lt/
   You can get your token from: https://bo.lt/app/settings#api-app-form\n");
@@ -29,12 +30,14 @@ my ($help, $stamp, $verbose);
 my $state = "";
 my $feedurl = "http://news.google.com/news?ned=us&topic=h&output=rss";
 my $token = "";
+my $account = "";
 
 GetOptions(
   "feed|f=s" => \$feedurl,
   "state|s=s" => \$state,
   "token|t=s" => \$token,
   "verbose|v" => \$verbose,
+  "account|a=s" => \$account,
   "help|h" => \$help
 );
 
@@ -58,6 +61,7 @@ sub bolt {
   my $comment = $_[1];
   my $token = $_[2];
   my $verbose = $_[3];
+  my $account = $_[4];
   my $path = $url . "_" . strftime('%Y-%m-%d_%H_%M_%S',localtime);
   $path =~ s/https?:\/\///;
   $path =~ s/^[_\/]//;
@@ -71,6 +75,9 @@ sub bolt {
   if ($comment =~ /.+/) {
     my $encoded_comment = uri_escape($comment);
     $bolt_request .= "&comment=" . $encoded_comment;
+  }
+  if ($account =~ /.+/) {
+    $bolt_request .= "&account_id=" . $account;
   }
   my $bolt_user_agent = LWP::UserAgent->new;
   my $bolt_output = $bolt_user_agent->get($bolt_request);
@@ -111,7 +118,7 @@ sub getNewLinksFromFeed {
       my $comment = $item->{'title'};
       my $url = $item->{'link'};
       if ($url =~ /.+/ and $comment =~ /.+/) {
-        bolt($url, $comment, $token, $verbose);
+        bolt($url, $comment, $token, $verbose, $account);
       }
     }
   }
